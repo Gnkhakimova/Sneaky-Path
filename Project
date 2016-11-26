@@ -1,0 +1,389 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<iostream>
+#include<fstream>
+#include<sstream>
+#include<string>
+#include<vector>
+#include<list>
+#include <limits.h>
+
+#define INF 99999
+using namespace std;
+
+/* A utility function to find the vertex with minimum distance  value, from the set of vertices 
+not yet included in shortest  path tree*/
+int minDistance(int* dist, bool* sptSet,int dimension)
+{
+	// Initialize min value
+	int min = INT_MAX, min_index;
+	for (int v = 1; v <= dimension; v++)
+		if (sptSet[v] == false && dist[v] <= min)
+			min = dist[v], min_index = v;
+	return min_index;
+}
+
+/* Function to print shortest path from source to j  using parent array*/
+void printPath(int* parent, int j)
+{
+	// Base Case : If j is the source
+ 	if (parent[j] == -1)
+	{
+		return;
+	}
+	printPath(parent, parent[j]);
+	printf("%d ", j);
+}
+
+ /*A utility function to print the constructed distance*/
+void printSolution(int* dist, int* parent, int dimension, int end,int src)
+{	
+	cout << endl;
+	printf("Vertex\t Distance\tPath");
+	printf("\n%d -> %d \t\t %d\t\t%d ", src, end, dist[end], src);
+	printPath(parent, end);	
+}
+
+ /*Funtion that implements Dijkstra's single source shortest path algorithm for a graph represented 
+ using adjacency matrix representation Path with minimum number of cars.*/
+void Dijkstra(int** car_flow, int src, int dimension, int end)
+{
+	/*The output array. dist[i] will hold the shortest distance from src to i*/
+	int* dist = new int [dimension];  
+   /*sptSet[i] will true if vertex i is included / in shortest    path tree or shortest distance 
+   from source to i is finalized*/
+	bool* sptSet = new bool [dimension];
+    // Parent array to store shortest path tree
+	int* parent= new int [dimension];
+	// Initialize all distances as INFINITE and stpSet[] as false
+	for (int i = 1; i <= dimension; i++)
+	{
+		parent[src] = -1;
+		dist[i] = INT_MAX;
+		sptSet[i] = false;
+	}
+
+	// Distance of source vertex from itself is always 0
+	dist[src] = 0;
+
+	// Find shortest path for all vertices
+	for (int count = 1; count <= dimension; count++)
+	{
+ /*Pick the minimum distance vertex from the set of vertices not yet processed. u is always equal to source
+ in first iteration.*/
+		int u = minDistance(dist, sptSet,dimension);
+
+		/*Mark the picked vertex as processed*/
+		sptSet[u] = true;
+
+		/*Update dist value of the adjacent vertices of the
+		picked vertex.*/
+
+		for (int v = 1; v <= dimension; v++)
+
+		/*Update dist[v] only if is not in sptSet, there is an edge from u to v, and total weight of path from
+		src to v through u is smaller than current value of dist[v]*/
+			if (!sptSet[v] && car_flow[u][v] &&
+				dist[u] + car_flow[u][v] < dist[v])
+			{
+				parent[v] = u;
+				dist[v] = dist[u] + car_flow[u][v];
+			}
+	}
+	// print the constructed distance array
+	printSolution(dist,parent,dimension, end,src);
+}
+
+/*Function to output shortest path from each node to each node (optional)*/
+void print_shortest_distance(int **distance, int dimension)
+{
+	int i, j;
+	printf("Following matrix shows the shortest distances"
+		" between every pair of vertices \n");
+	for (i = 1; i <= dimension; i++)
+	{
+		for (j = 1; j <= dimension; j++)
+		{
+			if (i == j)
+			{
+				printf("%7d", 0);
+			}
+			else
+			{
+				printf("%7d", distance[i][j]);
+			}
+		}
+		printf("\n");
+	}
+}
+
+// Function to store shortest path into 2D matrix of vectors and output it
+void printpath(int **parent, int u, int v, vector<int>** actual_path, int i, int j)
+{
+	// If the the node is parent node print it out and store in to actual_path matrix
+	if (parent[u][v] == u)
+	{
+		printf("%d", u);
+		actual_path[i][j].push_back(u);
+		return;
+	}
+	//If the node is not INF value recursivly call printpath function which will print out the shortest path
+	//Store node into actual_path matrix 
+	if (parent[u][v] != INF)
+	{
+		printf("%d<-", parent[u][v]);
+		actual_path[i][j].push_back(parent[u][v]);
+		printpath(parent, u, parent[u][v], actual_path, i, j);
+	}
+}
+
+/*Function will calculate path traffic between cities, will use given flow graph and actual path graph,
+will store results into new graph called path_traffic*/
+void car_flows(int** flow_graph, vector<int> **actual_path, int dimension,int src,int end)
+{
+	int cars;
+	int pos1, pos2;
+	int tmp = 0;
+	int** path_traffic = new int*[dimension];
+	/*Declaring path_traffic matrix which will store traffic on each edge*/
+	for (int i = 1; i <= dimension; i++)
+	{
+		path_traffic[i] = new int[dimension];
+	}	
+	/*Initializ path_traffic matrix with default value*/
+	for (int i = 1; i <= dimension; i++)
+	{
+		for (int k = 1; k <= dimension; k++)
+		{
+			path_traffic[i][k] = 0;
+		}		
+	}
+
+/*Looping through given flow graph so we can calculate the weight of each edge
+  (calculate number of cars on each path between cities)*/
+	for (int j = 1; j <= dimension; j++)
+	{
+		for (int k = 1; k <= dimension; k++)
+		{
+			/*Traversing through 2D matrix of vectors which stores actual shortest path between cities and updating
+			number of cars on each edge and store it in matrix called path_traffic so we can find a path with minimum 
+			number of cars.*/
+			cars = flow_graph[j][k];
+			vector<int> cars_n = actual_path[j][k];
+			vector<int>::reverse_iterator iter = cars_n.rbegin();
+			while (iter+1 != cars_n.rend())
+			{
+				pos1 = *iter;
+				iter++;
+				pos2 = *iter;
+				tmp = path_traffic[pos1][pos2];
+				path_traffic[pos1][pos2] = tmp + cars;
+			}		
+		}
+	}
+	cout << "\n" <<"---------Number of cars on each edge-------------- " << endl;
+	for (int i = 1; i <= dimension; i++)
+	{
+		for (int k = 1; k <= dimension; k++)
+		{
+			cout << path_traffic[i][k] << " ";
+		}
+		cout << endl;
+	}
+	/*Dijkstra's algorithm is called when we have number of cars on each edge in 
+	order to calculate the path with minimum number of cars*/
+	Dijkstra(path_traffic,src,dimension, end);
+}
+/*FloydWarshall algorithm is used to calculate the shorest path from each city to each city
+in order to calculate actual car flow on each edge*/
+void floydwarshall(int **graph,int dimension, vector<int>** actual_path,int **flow, int start, int end)
+{
+	//const int i = dimesion;
+	int** distance = new int*[dimension];
+	for (int i = 1; i <= dimension; i++)
+	{
+		distance[i] = new int[dimension];
+	}
+	int i, j, k;
+
+	int** parent = new int*[dimension];
+	for (int i = 1; i <= dimension; i++)
+	{
+		parent[i] = new int[dimension];
+	}
+	for (i = 1; i<=dimension; i++)
+		for (j = 1; j<=dimension; j++)
+		{
+			distance[i][j] = graph[i][j];
+			if (i == j)
+				parent[i][j] = INF;
+			if (graph[i][j] != INF)
+				parent[i][j] = i;
+			else
+				parent[i][j] = INF;
+		}
+// Floyd Warshall algorithm, pick the minimum of two and update the parent node.
+	for (k = 1; k<=dimension; k++)
+	{
+		for (i = 1; i<=dimension; i++)
+		{
+			for (j = 1; j<=dimension; j++)
+			{				
+					if ((distance[i][k] + distance[k][j] < distance[i][j]))
+					{
+						distance[i][j] = distance[i][k] + distance[k][j];
+						parent[i][j] = parent[k][j];
+					}				
+			}
+		}
+	}
+	/*Optinal function which will output actual shotest path from each city to each city*/
+	print_shortest_distance(distance, dimension);
+	printf("\n\n");
+	for (i = 1; i<=dimension; i++)
+		for (j = 1; j<=dimension; j++)
+		{
+			printf("Path between %d and %d passes through = \n", i, j);			
+			if (parent[i][j] != INF && i != j)				
+			{
+				printf("%d<-", j);
+				actual_path[i][j].push_back(j); 
+				printpath(parent, i, j, actual_path,i,j);
+				printf("\n");
+			}
+				else
+				{
+					actual_path[i][j].push_back(i);
+					printf("%d",i);
+					printf("\n");
+				}
+		}
+	// Output actual shortest path from each node to each node stored in 2D matrix of vectors
+	cout << "\n"<<"----------Actual shortest path--------- " << endl;
+	for (int k = 1; k <= dimension; k++)
+	{
+		for (int j = 1; j <= dimension; j++)
+		{
+			cout << "   ";
+			for (vector<int>::const_iterator i = actual_path[k][j].begin(); i != actual_path[k][j].end(); ++i)
+			{
+				cout << *i << " ";
+			}
+		}
+		cout << endl;
+	}
+	car_flows(flow,actual_path,dimension,start,end);	
+	
+}
+
+
+int main()
+{
+	int dimensions;
+	int start;
+	int end;
+	char graph_type;
+	char comma;
+	int loc1, loc2, value = 0;
+	/*open input file*/
+	ifstream infile("input1.txt");
+	/*if input file can't be opened output "File not found"*/
+	if (!infile.is_open())
+	{
+		cout << "File not found!" << endl;
+	}
+	/*Reading in dimenstion, starting point and ending point*/
+	infile >> dimensions >> comma >> start >> comma >> end;
+
+	/*Decalring adjacency matrix of vector to store actual path*/
+	vector<int>** actual_path = new vector<int>* [dimensions];
+	for (int i = 1; i <= dimensions; i++)
+	{
+		actual_path[i] = new vector<int>[dimensions+1]; 
+	}	
+
+	/*Decalring adjesency matrix to store distance between cities*/
+	int** graph_distance = new int*[dimensions];
+	for (int i = 1; i <= dimensions; i++)
+	{
+		graph_distance[i] = new int[dimensions];
+	}
+
+	/*Declare an adjacency matrix to store flow*/
+	int** graph_cars = new int*[dimensions];
+	for (int j = 1; j <= dimensions; j++)
+	{
+		graph_cars[j] = new int[dimensions];
+	}
+
+	/*Assign INF values to distance matrix as a default value*/
+	for (int k = 1; k <= dimensions; k++)
+	{
+		for (int m = 1; m <= dimensions; m++)
+		{
+			graph_distance[k][m] = INF;
+		}
+	}
+	/*assign default value to matrix car flow wchich is 0*/
+	for (int k = 1; k <= dimensions; k++)
+	{
+		for (int m = 1; m <= dimensions; m++)
+		{
+			graph_cars[k][m] = 0;
+		}
+	}
+
+	/*readin input file and based on input file form distance and car flow matricies*/
+	while (!infile.eof())
+	{
+		infile >> graph_type >> comma >> loc1 >> comma >> loc2 >> comma >> value;
+		if (graph_type == 'E')
+		{
+			graph_distance[loc1][loc2] = value;
+		}
+		if (graph_type == 'F')
+		{
+			graph_cars[loc1][loc2] = value;
+		}
+	}
+	/*Output graph E which represents the distance between cities*/
+
+	cout << "---------------Graph E-------------" << endl;
+	cout << "      1    2    3    4    5    6" << endl;
+	cout << "------------------------------------" << endl;
+	for (int k = 1; k <= dimensions; k++)
+	{
+		cout << k  << "|   ";
+		for (int m = 1; m <= dimensions; m++)
+		{
+			if (graph_distance[k][m] == 99999)
+			{
+				cout << " " << "0" << "    ";
+			}
+			else
+			{
+				cout << " " << graph_distance[k][m] << "    ";
+			}
+		}
+		cout << endl;
+	}
+	cout << endl << endl;
+
+	/*Output graph F which represents car flow between cities*/
+	cout << "---------------Graph F------------------------" << endl;
+	cout << "      1     2       3       4       5      6" << endl;
+	cout << "----------------------------------------------" << endl;
+	for (int k = 1; k <= dimensions; k++)
+	{
+		cout << k  << "|   ";
+		for (int m = 1; m <= dimensions; m++)
+		{
+			cout << " " << graph_cars[k][m] << "     ";
+		}
+		cout << endl<<endl;
+	}
+	/*Call Floydwarshall function to calculate sortest path from each node to each node*/
+	floydwarshall(graph_distance, dimensions,actual_path,graph_cars, start,end);
+	system("pause");
+	return 0;
+}
